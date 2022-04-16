@@ -76,8 +76,11 @@ WSGI_APPLICATION = 'app.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql', # 데이터베이스 엔진
+        'HOST': os.environ.get('DB_HOST'),         # 환경 변수에서 값을 가져옴
+        'NAME': os.environ.get('DB_NAME'),         # from docker-compose.yml
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASS'),
     }
 }
 
