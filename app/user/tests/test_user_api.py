@@ -7,6 +7,7 @@ from rest_framework import status            # 읽기 쉽게 지원해줌
 
 CREATE_USER_URL = reverse('user:create')    # URL 생성
 TOKEN_URL = reverse('user:token')
+ME_URL = reverse('user:me')
 
 # helper functions
 def create_user(**params):                   # 다수의 파라미터 전달 가능
@@ -92,3 +93,51 @@ class PublicUserApiTests(TestCase):
 
         self.assertNotIn('token', res.data)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_retrieve_user_unauthorized(self):
+        """Test that authentication is required for users"""
+        res = self.client.get(ME_URL)
+
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class PrivateUserApiTests(TestCase):
+    """Test API request that require authentication"""
+
+    def setUp(self):
+        self.user = create_user(
+            email = 'tootoomaa@naver.com',
+            password = 'testpass',
+            name='name'
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user) # 강제 사용자 인증
+
+    def test_retrieve_profile_success(self):
+        """Test retrieving profile for logged in used"""
+        res = self.client.get(ME_URL)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, {
+            'name': self.user.name,
+            'email': self.user.email
+        })
+
+    def test_post_not_allowed(self):
+        """Test that POST is not allowed on the me url"""
+        res = self.client.post(ME_URL, {})
+
+        self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_update_user_profile(self):
+        """Test updating the user profile for authentication user"""
+        # 테스트 중이라서 setup에서 설정한 기존 사용자의 정보와 다르다
+        payload = {'name': 'new name', 'password': 'newpassword123'}
+
+        res = self.client.patch(ME_URL, payload)
+        # DB를 최신 사용자 정보로 업데이트 한다.
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.name, payload['name'])
+        self.assertTrue(self.user.check_password(payload['password']))
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
